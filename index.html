@@ -1,156 +1,180 @@
 <!DOCTYPE html>
-<html lang="en">
+<html lang="ko">
 <head>
 <meta charset="utf-8" />
 <meta name="viewport" content="width=device-width,initial-scale=1" />
 <title>Korean of the day</title>
-<meta name="description" content="Tap the cookie to reveal today’s line." />
-
+<meta name="description" content="Tap to reveal today’s line." />
+<meta property="og:title" content="Korean of the day" />
+<meta property="og:description" content="Tap to reveal today’s line." />
+<meta property="og:type" content="website" />
 <style>
-  /* Full-page layout */
-  html, body { height: 100%; margin: 0; }
-  body {
-    background: #e7d2b8;
-    display: grid;
-    grid-template-rows: auto 1fr auto;
-    place-items: center;
-    font-family: ui-sans-serif, system-ui, -apple-system, Segoe UI, Roboto, Noto Sans, Arial;
+  html,body{height:100%;margin:0}
+  body{
+    /* pastel navy */
+    background:#7d8fb3;
+    display:grid;grid-template-rows:1fr auto;place-items:center;
+    font-family:ui-sans-serif,system-ui,-apple-system,Segoe UI,Roboto,Noto Sans,Arial
   }
-  .title { font-weight: 700; font-size: 22px; margin: 12px 0 4px; color: #111827; text-align:center; }
-  .subtitle { font-size: 13px; color: #6b7280; margin: 0 0 10px; text-align:center; }
+  :root{ --globe: min(78vmin, 640px); }
 
-  /* Big centered cookie that scales with viewport */
-  :root { --cookie: min(75vmin, 640px); }
-  .stage {
-    width: 100%;
-    height: 100%;
-    display: grid;
-    place-items: center;
-    padding: 12px;
-    box-sizing: border-box;
-  }
-  .cookie {
-    width: var(--cookie);
-    aspect-ratio: 1 / 1;
-    border-radius: 50%;
-    background: #fde68a;
-    display: grid;
-    place-items: center;
-    position: relative;
-    box-shadow: 0 12px 30px rgba(0,0,0,.14), 0 2px 6px rgba(0,0,0,.10);
-    cursor: pointer;
-    user-select: none;
-    transition: transform 260ms ease;
-  }
-  .cookie:active { transform: scale(.985); }
-  .cookie svg { width: 48%; height: auto; display:block; }
-  .tap {
-    position: absolute;
-    bottom: 8.5%;
-    left: 50%;
-    transform: translateX(-50%);
-    font-weight: 500; font-size: 14px; color: #374151;
+  .stage{
+    width:100%;height:100%;display:grid;place-items:center;padding:12px;box-sizing:border-box
   }
 
-  /* Card that slides up after reveal */
-  .card {
-    position: fixed;
-    left: 50%;
-    bottom: max(12px, 7vh);
-    transform: translateX(-50%) translateY(16px);
-    width: min(92vw, 760px);
-    background: #fff;
-    color: #111827;
-    border-radius: 16px;
-    box-shadow: 0 28px 70px rgba(0,0,0,.22), 0 2px 8px rgba(0,0,0,.12);
-    padding: 16px 16px 12px;
-    opacity: 0;
-    pointer-events: none;
-    transition: opacity 220ms ease, transform 220ms ease;
+  /* Circular “button” container */
+  .globe{
+    width:var(--globe);aspect-ratio:1/1;border-radius:50%;
+    background: #f5f7fb; /* soft off-white to contrast navy */
+    display:grid;place-items:center;position:relative;
+    box-shadow:0 18px 40px rgba(0,0,0,.22), 0 2px 8px rgba(0,0,0,.12);
+    cursor:pointer;user-select:none;transition:transform .26s ease
   }
-  .card.show { opacity: 1; pointer-events: auto; transform: translateX(-50%) translateY(0); }
-  .quote { font-weight: 500; font-size: 19px; line-height: 1.45; margin: 2px 0 6px; }
-  .meta { font-size: 13px; color:#6b7280; }
-  .actions { display:flex; gap:8px; justify-content:flex-end; margin-top:10px; }
-  .btn { font-weight: 600; font-size: 13px; padding: 9px 12px; border-radius: 10px; border: 0; cursor: pointer; }
-  .btn.copy { background:#111827; color:#fff; }
-  .btn.open { background:#f59e0b; color:#fff; display:none; }
-  .again { position: fixed; left:50%; bottom:8px; transform: translateX(-50%); font-size:12px; color:#6b7280; display:none; opacity:.95; }
+  .globe:active{ transform: scale(.985); }
 
-  @media (max-height: 520px) {
-    .card { position: static; transform:none; width: min(92vw, 760px); margin-top: 10px; }
+  /* Keep inner SVG comfortably inset */
+  .globe svg{ width:86%; height:auto; display:block; }
+
+  /* “Tap to reveal” hint */
+  .tap{
+    position:absolute; bottom:7.5%; left:50%; transform:translateX(-50%);
+    font:500 14px/1 ui-sans-serif; color:#334155; opacity:.9
+  }
+
+  /* Reveal card */
+  .card{
+    position:fixed; left:50%; bottom:max(12px,7vh); transform:translateX(-50%) translateY(16px);
+    width:min(92vw,760px); background:#ffffff; color:#111827; border-radius:16px;
+    box-shadow:0 28px 70px rgba(0,0,0,.22), 0 2px 8px rgba(0,0,0,.12);
+    padding:16px 16px 12px; opacity:0; pointer-events:none;
+    transition:opacity .22s ease, transform .22s ease
+  }
+  .card.show{ opacity:1; pointer-events:auto; transform:translateX(-50%) translateY(0) }
+  .quote{ font:500 19px/1.45 ui-sans-serif; margin:2px 0 6px }
+  .meta{ font:400 13px/1.35 ui-sans-serif; color:#6b7280 }
+  .actions{ display:flex; gap:8px; justify-content:flex-end; margin-top:10px }
+  .btn{ font:600 13px/1; padding:9px 12px; border-radius:10px; border:0; cursor:pointer }
+  .btn.copy{ background:#111827; color:#fff }
+  .btn.open{ background:#f59e0b; color:#fff; display:none }
+  .again{ position:fixed; left:50%; bottom:8px; transform:translateX(-50%);
+          font:400 12px/1.2 ui-sans-serif; color:#e2e8f0; opacity:.95; display:none }
+
+  @media (max-height:520px){
+    .card{ position:static; transform:none; width:min(92vw,760px); margin-top:10px }
   }
 </style>
 </head>
 <body>
-  <header>
-    <h1 class="title">Korean of the day</h1>
-    <p class="subtitle">Tap the cookie from our Story to reveal today’s line.</p>
-  </header>
 
-  <main class="stage">
-    <button id="cookie" class="cookie" aria-label="Tap to reveal today’s line">
-      <svg viewBox="0 0 140 100" xmlns="http://www.w3.org/2000/svg" aria-hidden="true">
-        <path d="M20 65c0-18 18-33 40-33s40 15 40 33c0 11-9 20-20 20H40C29 85 20 76 20 65z" fill="#F59E0B"/>
-        <path d="M65 32c10 6 20 18 20 33 0 11-9 20-20 20" stroke="#B45309" stroke-width="4" stroke-linecap="round"/>
-        <rect x="64" y="18" width="46" height="10" rx="2" fill="#FFF" transform="rotate(10 64 18)"/>
-        <path d="M35 75c15 5 45 5 60 0" stroke="#B45309" stroke-width="3" stroke-linecap="round"/>
-      </svg>
-      <div class="tap">Tap to reveal</div>
-    </button>
-  </main>
+<main class="stage">
+  <button id="globe" class="globe" aria-label="Tap to reveal today’s line">
+    <!-- HANGUL GLOBE (SVG) -->
+    <svg viewBox="0 0 1000 1000" aria-hidden="true" xmlns="http://www.w3.org/2000/svg">
+      <defs>
+        <!-- 5 circular paths (rings) -->
+        <path id="ring1" d="M500,140 a360,360 0 1,1 -0.1,0" />
+        <path id="ring2" d="M500,210 a290,290 0 1,1 -0.1,0" />
+        <path id="ring3" d="M500,280 a220,220 0 1,1 -0.1,0" />
+        <path id="ring4" d="M500,350 a150,150 0 1,1 -0.1,0" />
+        <path id="ring5" d="M500,420 a80,80   0 1,1 -0.1,0" />
+      </defs>
 
-  <div id="card" class="card" role="dialog" aria-live="polite" aria-label="Today’s line">
-    <p id="quote" class="quote"></p>
-    <div id="meta" class="meta"></div>
-    <div class="actions">
-      <a id="openBook" class="btn open" target="_blank" rel="noopener">Open book</a>
-      <button id="copy" class="btn copy">Copy</button>
-    </div>
+      <!-- Style: slightly varied opacities to look layered; navy accents -->
+      <g fill="#1e293b" font-size="46" font-weight="700" letter-spacing="6">
+        <text>
+          <textPath href="#ring1" startOffset="0%">
+            한글 · 말 · 문자 · 소리 · 가나다라 · 한국어 · 배움 · 공부 · 표현 · 한글 · 말 · 문자 · 소리 · 가나다라 · 한국어 · 배움 · 공부 · 표현
+          </textPath>
+        </text>
+      </g>
+
+      <g fill="#0f172a" opacity="0.85" font-size="40" font-weight="700" letter-spacing="5">
+        <text>
+          <textPath href="#ring2" startOffset="12%">
+            자모 · 모음 · 자음 · 의미 · 읽기 · 쓰기 · 말하기 · 듣기 · 표현 · 자모 · 모음 · 자음 · 의미 · 읽기 · 쓰기 · 말하기 · 듣기
+          </textPath>
+        </text>
+      </g>
+
+      <g fill="#334155" opacity="0.8" font-size="34" font-weight="700" letter-spacing="4">
+        <text>
+          <textPath href="#ring3" startOffset="25%">
+            배움 · 어휘 · 문장 · 문법 · 예문 · 발음 · 리듬 · 억양 · 배움 · 어휘 · 문장 · 문법 · 예문 · 발음 · 리듬 · 억양
+          </textPath>
+        </text>
+      </g>
+
+      <g fill="#475569" opacity="0.75" font-size="28" font-weight="700" letter-spacing="3">
+        <text>
+          <textPath href="#ring4" startOffset="40%">
+            오늘 · 문장 · 한 줄 · 배움 · 오늘 · 문장 · 한 줄 · 배움 · 오늘 · 문장 · 한 줄 · 배움
+          </textPath>
+        </text>
+      </g>
+
+      <g fill="#64748b" opacity="0.7" font-size="22" font-weight="700" letter-spacing="2">
+        <text>
+          <textPath href="#ring5" startOffset="55%">
+            한 · 글 · 말 · 뜻 · 음 · 훈 · 한 · 글 · 말 · 뜻 · 음 · 훈
+          </textPath>
+        </text>
+      </g>
+    </svg>
+
+    <div class="tap">Tap to reveal</div>
+  </button>
+</main>
+
+<!-- Reveal card -->
+<div id="card" class="card" role="dialog" aria-live="polite" aria-label="오늘의 문장">
+  <p id="quote" class="quote"></p>
+  <div id="meta" class="meta"></div>
+  <div class="actions">
+    <a id="openBook" class="btn open" target="_blank" rel="noopener">Open book</a>
+    <button id="copy" class="btn copy">Copy</button>
   </div>
-  <div id="again" class="again">Already revealed. Come back tomorrow ✨</div>
+</div>
+<div id="again" class="again">Already revealed. Come back tomorrow ✨</div>
 
 <script>
-  // Replace with your deployed Apps Script Web App URL
+  // 👇 Replace with your deployed Apps Script Web App URL
   const GAS_ENDPOINT = 'https://script.google.com/macros/s/REPLACE_WITH_YOURS/exec';
 
+  // Analytics helpers
   const params = new URLSearchParams(location.search);
   const SRC = params.get('utm_source') || '';
-
   const today = new Date();
   const ymd = today.toISOString().slice(0,10);
   const UID_KEY = 'fortune-uid';
   let uid = localStorage.getItem(UID_KEY);
   if(!uid){ uid = Math.random().toString(36).slice(2) + Date.now().toString(36); localStorage.setItem(UID_KEY, uid); }
 
-  const cookieBtn = document.getElementById('cookie');
-  const card     = document.getElementById('card');
-  const quoteEl  = document.getElementById('quote');
-  const metaEl   = document.getElementById('meta');
-  const openBook = document.getElementById('openBook');
-  const copyBtn  = document.getElementById('copy');
-  const again    = document.getElementById('again');
+  const globe   = document.getElementById('globe');
+  const card    = document.getElementById('card');
+  const quoteEl = document.getElementById('quote');
+  const metaEl  = document.getElementById('meta');
+  const openBook= document.getElementById('openBook');
+  const copyBtn = document.getElementById('copy');
+  const again   = document.getElementById('again');
 
   async function logEvent(event, note=''){
     try {
       await fetch(GAS_ENDPOINT + '?fn=log', {
-        method: 'POST',
-        headers: { 'Content-Type': 'application/json' },
-        body: JSON.stringify({ event, ymd, uid, ua:navigator.userAgent, ref:document.referrer||'', src:SRC, note })
+        method:'POST', headers:{'Content-Type':'application/json'},
+        body: JSON.stringify({event, ymd, uid, ua:navigator.userAgent, ref:document.referrer||'', src:SRC, note})
       });
-    } catch (_) {}
+    } catch(_) {}
   }
   logEvent('view');
 
   async function getQuote(){
-    const r = await fetch(GAS_ENDPOINT + '?fn=quote&d=' + ymd, { cache: 'no-store' });
+    const r = await fetch(GAS_ENDPOINT + '?fn=quote&d=' + ymd, { cache:'no-store' });
     if(!r.ok) throw new Error('network');
     return await r.json();
   }
 
   let opened = false;
-
-  cookieBtn.addEventListener('click', async () => {
+  globe.addEventListener('click', async () => {
     if(opened) return;
     opened = true;
     logEvent('reveal');
@@ -176,8 +200,7 @@
     const txt = quoteEl.textContent + (metaEl.textContent ? ('\n— ' + metaEl.textContent) : '');
     try {
       await navigator.clipboard.writeText(txt);
-      const old = copyBtn.textContent;
-      copyBtn.textContent = 'Copied!';
+      const old = copyBtn.textContent; copyBtn.textContent = 'Copied!';
       setTimeout(()=> copyBtn.textContent = old, 1400);
     } catch(_) {}
   });
