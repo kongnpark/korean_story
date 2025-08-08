@@ -8,46 +8,64 @@
 <meta property="og:title" content="Korean of the day" />
 <meta property="og:description" content="Tap to reveal today’s line." />
 <meta property="og:type" content="website" />
+
 <style>
   html,body{height:100%;margin:0}
   body{
     /* pastel navy */
     background:#7d8fb3;
-    display:grid;grid-template-rows:1fr auto;place-items:center;
+    display:grid; grid-template-rows:auto 1fr auto; place-items:center;
     font-family:ui-sans-serif,system-ui,-apple-system,Segoe UI,Roboto,Noto Sans,Arial
   }
-  :root{ --globe: min(78vmin, 640px); }
+
+  /* Header (kept) */
+  header{ text-align:center; padding:14px 10px 6px }
+  .title{ font-weight:700; font-size:22px; color:#0f172a; margin:0 0 6px }
+  .subtitle{ font-size:13px; color:#e5e7eb; margin:0 }
+
+  :root{ --globe: min(39vmin, 320px); } /* half the previous size */
 
   .stage{
-    width:100%;height:100%;display:grid;place-items:center;padding:12px;box-sizing:border-box
+    width:100%; height:100%;
+    display:grid; place-items:center;
+    padding:12px; box-sizing:border-box
   }
 
-  /* Circular “button” container */
+  /* Globe “button” */
   .globe{
-    width:var(--globe);aspect-ratio:1/1;border-radius:50%;
-    background: #f5f7fb; /* soft off-white to contrast navy */
-    display:grid;place-items:center;position:relative;
-    box-shadow:0 18px 40px rgba(0,0,0,.22), 0 2px 8px rgba(0,0,0,.12);
-    cursor:pointer;user-select:none;transition:transform .26s ease
+    width:var(--globe); aspect-ratio:1/1; border-radius:50%;
+    background: radial-gradient(120% 120% at 35% 30%, #f8fafc 0%, #eef2ff 45%, #e2e8f0 100%);
+    display:grid; place-items:center; position:relative;
+    box-shadow:0 14px 28px rgba(0,0,0,.18), 0 2px 8px rgba(0,0,0,.12);
+    cursor:pointer; user-select:none; transition:transform .26s ease, filter .26s ease;
+    overflow:hidden
   }
-  .globe:active{ transform: scale(.985); }
+  .globe:active{ transform:scale(.985) }
 
-  /* Keep inner SVG comfortably inset */
-  .globe svg{ width:86%; height:auto; display:block; }
+  /* 3D sheen highlight */
+  .globe::before{
+    content:""; position:absolute; inset:0;
+    background:radial-gradient(60% 60% at 35% 28%, rgba(255,255,255,.55), rgba(255,255,255,0) 60%);
+    pointer-events:none; mix-blend-mode:screen
+  }
 
-  /* “Tap to reveal” hint */
+  /* SVG scales within globe */
+  .globe svg{ width:88%; height:auto; display:block; transform: rotate(-8deg) }
+
   .tap{
     position:absolute; bottom:7.5%; left:50%; transform:translateX(-50%);
-    font:500 14px/1 ui-sans-serif; color:#334155; opacity:.9
+    font:500 13px/1 ui-sans-serif; color:#334155; opacity:.9
   }
 
   /* Reveal card */
   .card{
-    position:fixed; left:50%; bottom:max(12px,7vh); transform:translateX(-50%) translateY(16px);
-    width:min(92vw,760px); background:#ffffff; color:#111827; border-radius:16px;
+    position:fixed; left:50%; bottom:max(12px,7vh);
+    transform:translateX(-50%) translateY(16px);
+    width:min(92vw,760px);
+    background:#ffffff; color:#111827; border-radius:16px;
     box-shadow:0 28px 70px rgba(0,0,0,.22), 0 2px 8px rgba(0,0,0,.12);
-    padding:16px 16px 12px; opacity:0; pointer-events:none;
-    transition:opacity .22s ease, transform .22s ease
+    padding:16px 16px 12px;
+    opacity:0; pointer-events:none; transition:opacity .22s, transform .22s
   }
   .card.show{ opacity:1; pointer-events:auto; transform:translateX(-50%) translateY(0) }
   .quote{ font:500 19px/1.45 ui-sans-serif; margin:2px 0 6px }
@@ -66,58 +84,67 @@
 </head>
 <body>
 
+<header>
+  <h1 class="title">Korean of the day</h1>
+  <p class="subtitle">Tap the globe from our Story to reveal today’s line.</p>
+</header>
+
 <main class="stage">
   <button id="globe" class="globe" aria-label="Tap to reveal today’s line">
-    <!-- HANGUL GLOBE (SVG) -->
+    <!-- 3D-ish Hangul Globe (SVG) -->
     <svg viewBox="0 0 1000 1000" aria-hidden="true" xmlns="http://www.w3.org/2000/svg">
+      <!-- Subtle depth gradient on the “sphere” -->
       <defs>
-        <!-- 5 circular paths (rings) -->
-        <path id="ring1" d="M500,140 a360,360 0 1,1 -0.1,0" />
-        <path id="ring2" d="M500,210 a290,290 0 1,1 -0.1,0" />
-        <path id="ring3" d="M500,280 a220,220 0 1,1 -0.1,0" />
-        <path id="ring4" d="M500,350 a150,150 0 1,1 -0.1,0" />
-        <path id="ring5" d="M500,420 a80,80   0 1,1 -0.1,0" />
+        <radialGradient id="shade" cx="40%" cy="35%" r="70%">
+          <stop offset="0%" stop-color="#ffffff" stop-opacity="0.8"/>
+          <stop offset="60%" stop-color="#c7d2fe" stop-opacity="0.35"/>
+          <stop offset="100%" stop-color="#a5b4fc" stop-opacity="0.25"/>
+        </radialGradient>
+        <!-- Latitude rings (ellipses) to curve text for fake 3D -->
+        <path id="lat1" d="M500,200 a320,140 0 1,1 -0.1,0" />
+        <path id="lat2" d="M500,320 a360,180 0 1,1 -0.1,0" />
+        <path id="lat3" d="M500,420 a380,210 0 1,1 -0.1,0" />
+        <path id="lat4" d="M500,520 a360,180 0 1,1 -0.1,0" />
+        <path id="lat5" d="M500,620 a320,140 0 1,1 -0.1,0" />
       </defs>
 
-      <!-- Style: slightly varied opacities to look layered; navy accents -->
-      <g fill="#1e293b" font-size="46" font-weight="700" letter-spacing="6">
-        <text>
-          <textPath href="#ring1" startOffset="0%">
-            한글 · 말 · 문자 · 소리 · 가나다라 · 한국어 · 배움 · 공부 · 표현 · 한글 · 말 · 문자 · 소리 · 가나다라 · 한국어 · 배움 · 공부 · 표현
+      <!-- Sphere base -->
+      <circle cx="500" cy="500" r="430" fill="url(#shade)" />
+
+      <!-- Hangul on curved paths (front) -->
+      <g fill="#0f172a" font-weight="700" letter-spacing="6" text-anchor="middle">
+        <text font-size="50" opacity="0.90">
+          <textPath href="#lat1" startOffset="50%">
+            한글 · 문자 · 소리 · 가나다라 · 한국어 · 배움 · 공부 · 표현 · 발음 · 억양 · 어휘 · 문장
           </textPath>
         </text>
-      </g>
-
-      <g fill="#0f172a" opacity="0.85" font-size="40" font-weight="700" letter-spacing="5">
-        <text>
-          <textPath href="#ring2" startOffset="12%">
-            자모 · 모음 · 자음 · 의미 · 읽기 · 쓰기 · 말하기 · 듣기 · 표현 · 자모 · 모음 · 자음 · 의미 · 읽기 · 쓰기 · 말하기 · 듣기
+        <text font-size="46" opacity="0.85">
+          <textPath href="#lat2" startOffset="50%">
+            자모 · 모음 · 자음 · 의미 · 읽기 · 쓰기 · 말하기 · 듣기 · 문법 · 예문 · 리듬
           </textPath>
         </text>
-      </g>
-
-      <g fill="#334155" opacity="0.8" font-size="34" font-weight="700" letter-spacing="4">
-        <text>
-          <textPath href="#ring3" startOffset="25%">
-            배움 · 어휘 · 문장 · 문법 · 예문 · 발음 · 리듬 · 억양 · 배움 · 어휘 · 문장 · 문법 · 예문 · 발음 · 리듬 · 억양
+        <text font-size="44" opacity="0.82">
+          <textPath href="#lat3" startOffset="50%">
+            오늘 · 문장 · 한 줄 · 배움 · 공부 · 표현 · 발음 · 리듬 · 억양 · 예문
           </textPath>
         </text>
-      </g>
-
-      <g fill="#475569" opacity="0.75" font-size="28" font-weight="700" letter-spacing="3">
-        <text>
-          <textPath href="#ring4" startOffset="40%">
-            오늘 · 문장 · 한 줄 · 배움 · 오늘 · 문장 · 한 줄 · 배움 · 오늘 · 문장 · 한 줄 · 배움
+        <text font-size="46" opacity="0.80">
+          <textPath href="#lat4" startOffset="50%">
+            읽기 · 쓰기 · 말하기 · 듣기 · 단어 · 의미 · 문장 · 문법 · 어휘
           </textPath>
         </text>
-      </g>
-
-      <g fill="#64748b" opacity="0.7" font-size="22" font-weight="700" letter-spacing="2">
-        <text>
-          <textPath href="#ring5" startOffset="55%">
+        <text font-size="50" opacity="0.78">
+          <textPath href="#lat5" startOffset="50%">
             한 · 글 · 말 · 뜻 · 음 · 훈 · 한 · 글 · 말 · 뜻 · 음 · 훈
           </textPath>
         </text>
+      </g>
+
+      <!-- A couple of longitudes (faint grid for 3D effect) -->
+      <g stroke="#1f2937" stroke-opacity="0.15" stroke-width="6" fill="none">
+        <ellipse cx="500" cy="500" rx="0" ry="0"/>
+        <path d="M500,80 C650,240 650,760 500,920" />
+        <path d="M500,80 C350,240 350,760 500,920" />
       </g>
     </svg>
 
@@ -137,10 +164,10 @@
 <div id="again" class="again">Already revealed. Come back tomorrow ✨</div>
 
 <script>
-  // 👇 Replace with your deployed Apps Script Web App URL
+  // Replace with your deployed Apps Script Web App URL
   const GAS_ENDPOINT = 'https://script.google.com/macros/s/REPLACE_WITH_YOURS/exec';
 
-  // Analytics helpers
+  // UTM + visitor id
   const params = new URLSearchParams(location.search);
   const SRC = params.get('utm_source') || '';
   const today = new Date();
