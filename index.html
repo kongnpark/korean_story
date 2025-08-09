@@ -12,68 +12,56 @@
 <style>
   html,body{height:100%;margin:0}
   body{
-    /* pastel navy */
-    background:#7d8fb3;
-    display:grid; grid-template-rows:auto 1fr auto;
-    place-items:center;
+    background:#7d8fb3; /* pastel navy */
+    display:grid; grid-template-rows:auto 1fr auto; place-items:center;
     font-family:ui-sans-serif,system-ui,-apple-system,Segoe UI,Roboto,Noto Sans,Arial
   }
-
-  /* Header (kept) */
   header{ text-align:center; padding:8px 10px 0 }
   .title{ font-weight:700; font-size:22px; color:#0f172a; margin:0 0 2px }
   .subtitle{ font-size:13px; color:#e5e7eb; margin:0 0 4px }
 
-  :root{ --globe: min(39vmin, 320px); } /* half the older size; tweak freely */
+  :root{ --globe: min(39vmin, 320px); } /* tweak size here */
 
-  /* Stage sits higher on the page */
   .stage{
     width:100%; height:100%;
-    display:grid; place-content:start center; /* pushes content upward */
-    padding-top:4.5vh; /* adjust 3–6vh to taste */
-    padding-left:12px; padding-right:12px; box-sizing:border-box;
+    display:grid; place-content:start center;
+    padding-top:4.2vh; padding-inline:12px; box-sizing:border-box;
   }
 
-  /* Stack label above the globe */
   .globe-wrap{ display:flex; flex-direction:column; align-items:center; gap:10px; }
 
-  /* Globe button with polished 3D look */
-  .globe{
-    width:var(--globe); aspect-ratio:1/1; border-radius:50%;
-    background: radial-gradient(120% 120% at 35% 30%, #f8fafc 0%, #eef2ff 45%, #e2e8f0 100%);
-    display:grid; place-items:center; position:relative;
-    box-shadow:0 14px 28px rgba(0,0,0,.18), 0 2px 8px rgba(0,0,0,.12);
-    cursor:pointer; user-select:none; transition:transform .26s ease, filter .26s ease;
-    overflow:hidden;
-  }
-  .globe:active{ transform:scale(.985) }
-
-  /* Soft sheen */
-  .globe::before{
-    content:""; position:absolute; inset:0;
-    background:radial-gradient(60% 60% at 35% 28%, rgba(255,255,255,.55), rgba(255,255,255,0) 60%);
-    pointer-events:none; mix-blend-mode:screen
-  }
-
-  /* SVG sizing & subtle tilt */
-  .globe svg{ width:88%; height:auto; display:block; transform: rotate(-6deg) }
-
-  /* “Tap to reveal” above the globe */
   .tap{
     font:500 13px/1 ui-sans-serif; color:#e8eefc;
-    text-shadow: 0 1px 2px rgba(0,0,0,.25);
-    opacity:.95;
+    text-shadow:0 1px 2px rgba(0,0,0,.25); opacity:.95;
   }
+
+  .globe{
+    width:var(--globe); aspect-ratio:1/1; border-radius:50%;
+    display:grid; place-items:center; position:relative; overflow:hidden;
+    cursor:pointer; user-select:none; transition:transform .22s ease;
+    box-shadow:
+      0 28px 60px rgba(10,16,30,.28),
+      0 3px 10px rgba(0,0,0,.18);
+    background: radial-gradient(120% 120% at 35% 30%, #f8fafc 0%, #eef2ff 45%, #e2e8f0 100%);
+  }
+  .globe:active{ transform:scale(.985) }
+  .globe svg{ width:88%; height:auto; display:block; }
+
+  /* Gentle sheen */
+  .gloss{mix-blend-mode:screen; opacity:.6}
+
+  /* Idle, barely-there rotation for polish */
+  @keyframes slowSpin { from{transform:rotate(-6deg)} to{transform:rotate(-366deg)} }
+  .spin{ transform-origin:50% 50%; animation:slowSpin 28s linear infinite; }
 
   /* Reveal card */
   .card{
     position:fixed; left:50%; bottom:max(12px,7vh);
     transform:translateX(-50%) translateY(16px);
-    width:min(92vw,760px);
-    background:#ffffff; color:#111827; border-radius:16px;
+    width:min(92vw,760px); background:#fff; color:#111827; border-radius:16px;
     box-shadow:0 28px 70px rgba(0,0,0,.22), 0 2px 8px rgba(0,0,0,.12);
-    padding:16px 16px 12px;
-    opacity:0; pointer-events:none; transition:opacity .22s, transform .22s
+    padding:16px 16px 12px; opacity:0; pointer-events:none;
+    transition:opacity .22s, transform .22s
   }
   .card.show{ opacity:1; pointer-events:auto; transform:translateX(-50%) translateY(0) }
   .quote{ font:500 19px/1.45 ui-sans-serif; margin:2px 0 6px }
@@ -94,7 +82,7 @@
 
 <header>
   <h1 class="title">Korean of the day</h1>
-  <p class="subtitle">Tap to reveal today’s line.</p>
+  <p class="subtitle">Tap the globe from our Story to reveal today’s line.</p>
 </header>
 
 <main class="stage">
@@ -102,78 +90,74 @@
     
 
     <button id="globe" class="globe" aria-label="Tap to reveal today’s line">
-      <!-- Polished 3D-ish Hangul Globe -->
+      <!-- Professional Hangul 3D Globe -->
       <svg viewBox="0 0 1000 1000" aria-hidden="true" xmlns="http://www.w3.org/2000/svg">
         <defs>
-          <!-- Softer sphere shading -->
-          <radialGradient id="shade" cx="38%" cy="32%" r="72%">
-            <stop offset="0%"  stop-color="#ffffff" stop-opacity="0.95"/>
-            <stop offset="55%" stop-color="#dbe7ff" stop-opacity="0.55"/>
-            <stop offset="100%" stop-color="#b6c4ff" stop-opacity="0.35"/>
+          <!-- Sphere shading -->
+          <radialGradient id="sphereShade" cx="38%" cy="32%" r="72%">
+            <stop offset="0%"  stop-color="#ffffff" stop-opacity=".98"/>
+            <stop offset="55%" stop-color="#dbe7ff" stop-opacity=".55"/>
+            <stop offset="100%" stop-color="#b6c4ff" stop-opacity=".35"/>
           </radialGradient>
 
-          <!-- Subtle vignette -->
+          <!-- Vignette + inner shadow -->
           <radialGradient id="vignette" cx="50%" cy="50%" r="70%">
             <stop offset="60%" stop-color="rgba(0,0,0,0)"/>
-            <stop offset="100%" stop-color="rgba(0,0,0,0.12)"/>
+            <stop offset="100%" stop-color="rgba(0,0,0,.12)"/>
           </radialGradient>
+          <filter id="innerShadow" x="-20%" y="-20%" width="140%" height="140%">
+            <feOffset dx="0" dy="1"/>
+            <feGaussianBlur stdDeviation="4" result="blur"/>
+            <feComposite in="SourceGraphic" in2="blur" operator="arithmetic" k2="-1" k3="2"/>
+          </filter>
 
-          <!-- Latitude rings (faux 3D wrap) -->
-          <path id="lat1" d="M500,200 a320,140 0 1,1 -0.1,0" />
+          <!-- Gloss sweep -->
+          <linearGradient id="glossGrad" x1="0" y1="0" x2="1" y2="1">
+            <stop offset="0%" stop-color="white" stop-opacity=".8"/>
+            <stop offset="45%" stop-color="white" stop-opacity=".1"/>
+            <stop offset="100%" stop-color="white" stop-opacity="0"/>
+          </linearGradient>
+
+          <!-- Latitude paths (curved text) -->
+          <path id="lat1" d="M500,215 a315,135 0 1,1 -0.1,0" />
           <path id="lat2" d="M500,320 a360,180 0 1,1 -0.1,0" />
           <path id="lat3" d="M500,420 a380,210 0 1,1 -0.1,0" />
           <path id="lat4" d="M500,520 a360,180 0 1,1 -0.1,0" />
-          <path id="lat5" d="M500,620 a320,140 0 1,1 -0.1,0" />
-
-          <!-- Gentle inner glow -->
-          <filter id="softGlow">
-            <feGaussianBlur stdDeviation="2" result="blur"/>
-            <feMerge>
-              <feMergeNode in="blur"/>
-              <feMergeNode in="SourceGraphic"/>
-            </feMerge>
-          </filter>
+          <path id="lat5" d="M500,625 a315,135 0 1,1 -0.1,0" />
         </defs>
 
-        <!-- Sphere base + vignette -->
-        <g filter="url(#softGlow)">
-          <circle cx="500" cy="500" r="430" fill="url(#shade)"/>
+        <!-- Sphere -->
+        <g filter="url(#innerShadow)">
+          <circle cx="500" cy="500" r="430" fill="url(#sphereShade)"/>
           <circle cx="500" cy="500" r="430" fill="url(#vignette)"/>
         </g>
 
-        <!-- Hangul bands -->
-        <g fill="#0f172a" font-weight="700" letter-spacing="6" text-anchor="middle">
-          <text font-size="50" opacity="0.90">
-            <textPath href="#lat1" startOffset="50%">
-              한글 · 문자 · 소리 · 가나다라 · 한국어 · 배움 · 공부 · 표현 · 발음 · 억양 · 어휘 · 문장
-            </textPath>
-          </text>
-          <text font-size="46" opacity="0.85">
-            <textPath href="#lat2" startOffset="50%">
-              자모 · 모음 · 자음 · 의미 · 읽기 · 쓰기 · 말하기 · 듣기 · 문법 · 예문 · 리듬
-            </textPath>
-          </text>
-          <text font-size="44" opacity="0.82">
-            <textPath href="#lat3" startOffset="50%">
-              오늘 · 문장 · 한 줄 · 배움 · 공부 · 표현 · 발음 · 리듬 · 억양 · 예문
-            </textPath>
-          </text>
-          <text font-size="46" opacity="0.80">
-            <textPath href="#lat4" startOffset="50%">
-              읽기 · 쓰기 · 말하기 · 듣기 · 단어 · 의미 · 문장 · 문법 · 어휘
-            </textPath>
-          </text>
-          <text font-size="50" opacity="0.78">
-            <textPath href="#lat5" startOffset="50%">
-              한 · 글 · 말 · 뜻 · 음 · 훈 · 한 · 글 · 말 · 뜻 · 음 · 훈
-            </textPath>
-          </text>
+        <!-- Gloss highlight -->
+        <ellipse class="gloss" cx="380" cy="340" rx="210" ry="110" fill="url(#glossGrad)"/>
+
+        <!-- Meridians (very faint) -->
+        <g stroke="#0f172a" stroke-opacity=".12" stroke-width="6" fill="none">
+          <path d="M500,90 C650,250 650,750 500,910"/>
+          <path d="M500,90 C350,250 350,750 500,910"/>
         </g>
 
-        <!-- Faint longitudes -->
-        <g stroke="#1f2937" stroke-opacity="0.14" stroke-width="6" fill="none">
-          <path d="M500,80 C650,240 650,760 500,920"/>
-          <path d="M500,80 C350,240 350,760 500,920"/>
+        <!-- Hangul rings (balanced weights / spacing) -->
+        <g class="spin" fill="#0f172a" font-weight="700" letter-spacing="6" text-anchor="middle">
+          <text font-size="48" opacity=".90">
+            <textPath href="#lat1" startOffset="50%">한글 · 문자 · 소리 · 가나다라 · 한국어 · 배움 · 공부 · 표현 · 발음 · 억양 · 어휘 · 문장</textPath>
+          </text>
+          <text font-size="44" opacity=".85">
+            <textPath href="#lat2" startOffset="50%">자모 · 모음 · 자음 · 의미 · 읽기 · 쓰기 · 말하기 · 듣기 · 문법 · 예문 · 리듬</textPath>
+          </text>
+          <text font-size="42" opacity=".82">
+            <textPath href="#lat3" startOffset="50%">오늘 · 문장 · 한 줄 · 배움 · 공부 · 표현 · 발음 · 리듬 · 억양 · 예문</textPath>
+          </text>
+          <text font-size="44" opacity=".80">
+            <textPath href="#lat4" startOffset="50%">읽기 · 쓰기 · 말하기 · 듣기 · 단어 · 의미 · 문장 · 문법 · 어휘</textPath>
+          </text>
+          <text font-size="48" opacity=".78">
+            <textPath href="#lat5" startOffset="50%">한 · 글 · 말 · 뜻 · 음 · 훈 · 한 · 글 · 말 · 뜻 · 음 · 훈</textPath>
+          </text>
         </g>
       </svg>
     </button>
@@ -195,7 +179,6 @@
   // Replace with your deployed Apps Script Web App URL
   const GAS_ENDPOINT = 'https://script.google.com/macros/s/REPLACE_WITH_YOURS/exec';
 
-  // UTM + visitor id
   const params = new URLSearchParams(location.search);
   const SRC = params.get('utm_source') || '';
   const today = new Date();
