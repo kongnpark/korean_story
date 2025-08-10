@@ -54,27 +54,35 @@
   }
   #word-sphere .ws-word.ws-accent{ color:#f59e0b; }
 
-  /* Reveal card */
-  .card{
-    position:fixed; left:50%; bottom:max(12px,7vh);
-    transform:translateX(-50%) translateY(16px);
-    width:min(92vw,760px); background:#fff; color:#111827; border-radius:16px;
-    box-shadow:0 28px 70px rgba(0,0,0,.22), 0 2px 8px rgba(0,0,0,.12);
-    padding:16px 16px 12px; opacity:0; pointer-events:none;
-    transition:opacity .22s, transform .22s
+  /* RESULT: cover left, text+meta right */
+  .fortune-card{
+    max-width:980px; width:min(92vw,980px);
+    margin:28px auto 18px; padding:18px;
+    display:none; gap:22px; align-items:flex-start;
+    background:rgba(255,255,255,.08); backdrop-filter:blur(6px);
+    border-radius:16px; box-shadow:0 12px 30px rgba(0,0,0,.2);
+    color:#0f172a;
   }
-  .card.show{ opacity:1; pointer-events:auto; transform:translateX(-50%) translateY(0) }
-  .quote{ font:500 19px/1.45 ui-sans-serif; margin:2px 0 6px }
-  .meta{ font:400 13px/1.35 ui-sans-serif; color:#6b7280 }
-  .actions{ display:flex; gap:8px; justify-content:flex-end; margin-top:10px }
-  .btn{ font:600 13px/1; padding:9px 12px; border-radius:10px; border:0; cursor:pointer }
+  .fortune-card.show{ display:flex; }
+  .fc-left{ flex:0 0 260px }
+  .fc-left img{ width:100%; height:auto; border-radius:14px; box-shadow:0 8px 24px rgba(0,0,0,.25) }
+  .fc-right{ flex:1; min-width:0; display:flex; flex-direction:column; gap:10px }
+  .fc-text{ font-size:1.25rem; line-height:1.55; font-weight:700; color:#0f172a }
+  .fc-actions{ display:flex; gap:8px; }
+  .btn{ font:600 13px/1 ui-sans-serif; padding:9px 12px; border-radius:10px; border:0; cursor:pointer }
   .btn.copy{ background:#111827; color:#fff }
   .btn.open{ background:#f59e0b; color:#fff; display:none }
+  .fc-meta{ font-size:.95rem; color:#122; }
+  .fc-title{ font-weight:700 }
+  .fc-by,.fc-isbn{ opacity:.85; margin-top:2px }
+  .fc-link{ display:inline-block; margin-top:8px; text-decoration:underline }
+
   .again{ position:fixed; left:50%; bottom:8px; transform:translateX(-50%);
           font:400 12px/1.2 ui-sans-serif; color:#e2e8f0; opacity:.95; display:none }
 
-  @media (max-height:520px){
-    .card{ position:static; transform:none; width:min(92vw,760px); margin-top:10px }
+  @media (max-width:760px){
+    .fortune-card{ flex-direction:column; }
+    .fc-left{ flex:0 0 auto }
   }
 </style>
 </head>
@@ -90,23 +98,34 @@
     <button id="globe" class="globe" aria-label="Tap to reveal today’s line">
       <div id="word-sphere"><div class="ws-space" id="ws-space"></div></div>
     </button>
+
+    <!-- RESULT CARD -->
+    <section id="fortuneCard" class="fortune-card" aria-live="polite" aria-label="오늘의 문장">
+      <div class="fc-left">
+        <img id="fcCover" alt="Book cover" />
+      </div>
+      <div class="fc-right">
+        <div id="fcText" class="fc-text"></div>
+        <div class="fc-actions">
+          <a id="fcOpen" class="btn open" target="_blank" rel="noopener">Open book</a>
+          <button id="fcCopy" class="btn copy">Copy</button>
+        </div>
+        <div class="fc-meta">
+          <div id="fcBook" class="fc-title"></div>
+          <div class="fc-by"> <span id="fcAuthor"></span></div>
+          <div class="fc-isbn">ISBN <span id="fcIsbn"></span></div>
+          <a id="fcLink" class="fc-link" href="#" target="_blank" rel="noopener">View book</a>
+        </div>
+      </div>
+    </section>
   </div>
 </main>
 
-<!-- Reveal card -->
-<div id="card" class="card" role="dialog" aria-live="polite" aria-label="오늘의 문장">
-  <p id="quote" class="quote"></p>
-  <div id="meta" class="meta"></div>
-  <div class="actions">
-    <a id="openBook" class="btn open" target="_blank" rel="noopener">Open book</a>
-    <button id="copy" class="btn copy">Copy</button>
-  </div>
-</div>
 <div id="again" class="again">Already revealed. Come back tomorrow ✨</div>
 
 <script defer>
 (function(){
-  /* ---- replace with your deployed Apps Script Web App URL ---- */
+  /* ---- your deployed Apps Script Web App URL ---- */
   const GAS_ENDPOINT = 'https://script.google.com/macros/s/AKfycbwKejO7i3dEV3WB2KHUP1QKKJeX2bSzIGS4jZCxfeLJKwOGZEAMECXENvPH3IdT720OIw/exec';
 
   /* ---- utils ---- */
@@ -126,86 +145,99 @@
     return u;
   }
 
-  /* ---- API helpers (with fallback for both styles) ---- */
+  /* ---- API helpers ---- */
   async function fetchQuote(ymd){
-    // First try: ?d=YYYY-MM-DD
-    let r = await fetch(`${GAS_ENDPOINT}?d=${encodeURIComponent(ymd)}`, { cache:'no-store' });
-    try {
-      const j = await r.json();
-      if (!j.error) return j;
-    } catch(_) {}
-    // Fallback: ?fn=quote&d=YYYY-MM-DD
-    r = await fetch(`${GAS_ENDPOINT}?fn=quote&d=${encodeURIComponent(ymd)}`, { cache:'no-store' });
-    return r.json();
+    const url = `${GAS_ENDPOINT}?d=${encodeURIComponent(ymd)}`;
+    const r = await fetch(url, { cache:'no-store' });
+    if(!r.ok) throw new Error('network');
+    return r.json(); // expect { ok:true, text, book, author, isbn, link, cover }
   }
 
   function logEvent(kind, ymd, note=''){
     const uid = getUid();
     const ua  = navigator.userAgent;
-    // primary: action=log (GET, fire-and-forget)
     fetch(`${GAS_ENDPOINT}?action=log&d=${encodeURIComponent(ymd)}&src=${encodeURIComponent(SRC)}&uid=${encodeURIComponent(uid)}&ua=${encodeURIComponent(ua)}&event=${encodeURIComponent(kind)}&note=${encodeURIComponent(note)}`)
       .catch(()=>{});
-    // fallback: fn=log (POST JSON)
-    try {
-      fetch(`${GAS_ENDPOINT}?fn=log`, {
-        method:'POST',
-        headers:{'Content-Type':'application/json'},
-        body: JSON.stringify({event:kind, ymd, uid, ua, src:SRC, note})
-      }).catch(()=>{});
-    } catch(_) {}
   }
 
   /* ---- DOM refs ---- */
-  const globe   = document.getElementById('globe');
-  const card    = document.getElementById('card');
-  const quoteEl = document.getElementById('quote');
-  const metaEl  = document.getElementById('meta');
-  const openBook= document.getElementById('openBook');
-  const copyBtn = document.getElementById('copy');
-  const again   = document.getElementById('again');
+  const globe     = document.getElementById('globe');
+  const again     = document.getElementById('again');
+
+  const card      = document.getElementById('fortuneCard');
+  const fcCover   = document.getElementById('fcCover');
+  const fcText    = document.getElementById('fcText');
+  const fcCopy    = document.getElementById('fcCopy');
+  const fcOpen    = document.getElementById('fcOpen');
+  const fcBook    = document.getElementById('fcBook');
+  const fcAuthor  = document.getElementById('fcAuthor');
+  const fcIsbn    = document.getElementById('fcIsbn');
+  const fcLink    = document.getElementById('fcLink');
 
   const ymd = todayKST();
   logEvent('view', ymd);
 
+  function renderFortune(d){
+    // cover
+    if (d.cover) {
+      fcCover.src = d.cover;
+      fcCover.style.display = '';
+    } else {
+      fcCover.removeAttribute('src');
+      fcCover.style.display = 'none';
+    }
+
+    // text
+    fcText.textContent = d.text || '오늘 문장이 아직 없어요. 잠시 후 다시 시도해 주세요.';
+
+    // metadata
+    fcBook.textContent   = d.book   || '';
+    fcAuthor.textContent = d.author || '';
+    fcIsbn.textContent   = d.isbn   || '';
+
+    // links
+    if (d.link) {
+      fcLink.href = d.link;
+      fcLink.style.display = 'inline-block';
+      fcOpen.href = d.link;
+      fcOpen.style.display = 'inline-block';
+    } else {
+      fcLink.style.display = 'none';
+      fcOpen.style.display = 'none';
+    }
+
+    // copy
+    const copyText = d.text
+      ? `${d.text}\n— ${[d.book, d.author].filter(Boolean).join(' • ')}${d.isbn ? ' • ISBN ' + d.isbn : ''}`.trim()
+      : '';
+    fcCopy.onclick = async () => {
+      try { await navigator.clipboard.writeText(copyText); fcCopy.textContent='Copied!'; }
+      catch { fcCopy.textContent='Copy failed'; }
+      setTimeout(()=> fcCopy.textContent='Copy', 1200);
+      logEvent('copy', ymd);
+    };
+
+    card.classList.add('show');
+  }
+
   let opened = false;
   globe.addEventListener('click', async () => {
-    if(opened) return;
+    if (opened) return;
     opened = true;
     logEvent('reveal', ymd);
 
     try {
-      const q = await fetchQuote(ymd);
-      if (q && !q.error) {
-        quoteEl.textContent = '“' + (q.text || '') + '”';
-        const bits = [];
-        if(q.book)  bits.push('<span style="font-weight:600">' + q.book + '</span>');
-        if(q.author)bits.push(q.author);
-        if(q.isbn)  bits.push('ISBN ' + q.isbn);
-        metaEl.innerHTML = bits.join(' · ');
-        if(q.link){ openBook.href = q.link; openBook.style.display = 'inline-block'; }
-        // click logging on "Open book"
-        openBook.addEventListener('click', () => logEvent('click', ymd), { passive:true, once:false });
-      } else {
-        quoteEl.textContent = '오늘 문장이 아직 없어요. 잠시 후 다시 시도해 주세요.';
-      }
-    } catch(e){
-      quoteEl.textContent = '네트워크 오류입니다. 잠시 후 다시 시도해 주세요.';
+      const j = await fetchQuote(ymd);
+      if (j && j.ok) renderFortune(j);
+      else renderFortune({});
+    } catch {
+      renderFortune({ text:"네트워크 오류입니다. 잠시 후 다시 시도해 주세요." });
     }
 
-    card.classList.add('show');
     setTimeout(()=> { again.style.display='block'; }, 80);
   });
 
-  copyBtn.addEventListener('click', async () => {
-    const txt = quoteEl.textContent + (metaEl.textContent ? ('\n— ' + metaEl.textContent) : '');
-    try {
-      await navigator.clipboard.writeText(txt);
-      const old = copyBtn.textContent; copyBtn.textContent = 'Copied!'; setTimeout(()=> copyBtn.textContent = old, 1400);
-      logEvent('copy', ymd);
-    } catch(_) {}
-  });
-
-  /* ===== word sphere JS (auto-rotate only) ===== */
+  /* ===== word sphere (auto-rotate only) ===== */
   (function(){
     const WORDS = [
       "행복","사랑","지혜","용기","희망","성공","건강","평화","인내","감사","기쁨","성장","배움","도전","발견","기회",
@@ -229,7 +261,7 @@
     const points = fibonacciPoints(WORDS.length);
     const nodes  = points.map((_,i)=>{
       const el = document.createElement('div');
-      el.className = 'ws-word' + (Math.random()<0.12 ? ' ws-accent':'');
+      el.className = 'ws-word' + (Math.random()<0.12 ? ' ws-accent':'' );
       el.textContent = WORDS[i % WORDS.length];
       space.appendChild(el);
       return el;
@@ -272,7 +304,6 @@
       requestAnimationFrame(render);
     }
     render();
-
     new ResizeObserver(()=>{}).observe(host);
   })();
 })();
