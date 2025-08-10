@@ -126,7 +126,8 @@
 <script defer>
 (function(){
   /* ---- your deployed Apps Script Web App URL ---- */
-  const GAS_ENDPOINT = 'https://script.google.com/macros/s/AKfycbwKejO7i3dEV3WB2KHUP1QKKJeX2bSzIGS4jZCxfeLJKwOGZEAMECXENvPH3IdT720OIw/exec';
+  const GAS_ENDPOINT = 'https://script.google.com/macros/s/AKfycbxSDTnP3poBP8_I65rC8bbkIw2Acn50aGMXJd0ewGzpAZeds8gq-2DSqCgTPhy-rqlN/exec';
+
 
   /* ---- utils ---- */
   const params = new URLSearchParams(location.search);
@@ -148,10 +149,17 @@
   /* ---- API helpers ---- */
   async function fetchQuote(ymd){
     const url = `${GAS_ENDPOINT}?d=${encodeURIComponent(ymd)}`;
-    const r = await fetch(url, { cache:'no-store' });
-    if(!r.ok) throw new Error('network');
-    return r.json(); // expect { ok:true, text, book, author, isbn, link, cover }
+    const r = await fetch(url, { cache:'no-store', redirect:'follow' });
+    const t = await r.text();
+  try {
+    const j = JSON.parse(t);
+    // If backend doesn't send ok:true, assume success
+    return j.ok === undefined ? { ok:true, ...j } : j;
+  } catch (e) {
+    console.error('fetchQuote not-json preview:', t.slice(0,200));
+    throw new Error('not-json');
   }
+ }
 
   function logEvent(kind, ymd, note=''){
     const uid = getUid();
@@ -228,7 +236,7 @@
 
     try {
       const j = await fetchQuote(ymd);
-      if (j && j.ok) renderFortune(j);
+      if (j && (j.ok ?? true)) renderFortune(j);
       else renderFortune({});
     } catch {
       renderFortune({ text:"네트워크 오류입니다. 잠시 후 다시 시도해 주세요." });
