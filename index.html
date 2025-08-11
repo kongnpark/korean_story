@@ -356,6 +356,57 @@
     render();
     new ResizeObserver(()=>{}).observe(host);
   })();
+
+// --- helpers ---
+function kstToday() {
+  const nowSeoul = new Date(new Date().toLocaleString('en-US', { timeZone: 'Asia/Seoul' }));
+  const y = nowSeoul.getFullYear();
+  const m = String(nowSeoul.getMonth()+1).padStart(2,'0');
+  const d = String(nowSeoul.getDate()).padStart(2,'0');
+  return `${y}-${m}-${d}`;
+}
+function getParam(name, def='') {
+  const v = new URLSearchParams(location.search).get(name);
+  return v ? v : def;
+}
+function uid() {
+  const k='kstory_uid';
+  let u = localStorage.getItem(k);
+  if (!u) { u = Math.random().toString(36).slice(2)+Date.now().toString(36); localStorage.setItem(k,u); }
+  return u;
+}
+
+// --- main ---
+(async function init() {
+  const d = getParam('d', kstToday());                         // date: ?d=YYYY-MM-DD or today (KST)
+  const utm_source = getParam('utm_source', 'instagram');      // optional
+  const utm_medium = getParam('utm_medium', 'story');          // optional
+  const utm_campaign = getParam('utm_campaign', 'kotd');       // optional
+
+  // 1) fetch the story content
+  const qURL = `${GAS_ENDPOINT}?m=quote&d=${encodeURIComponent(d)}`;
+  const res = await fetch(qURL, {cache:'no-store'});
+  const data = await res.json(); // {date,text,book,author,isbn,link,cover}
+
+  // TODO: render onto your page:
+  // document.querySelector('#q-text').textContent = data.text || 'Coming soon…';
+  // document.querySelector('#q-book').textContent = data.book || '';
+  // document.querySelector('#q-author').textContent = data.author || '';
+  // document.querySelector('#q-cover').src = data.cover || '';
+
+  // 2) log the view (fills uid/ua properly)
+  const logURL = `${GAS_ENDPOINT}?m=log`
+    + `&event=view`
+    + `&story_date=${encodeURIComponent(d)}`
+    + `&utm_source=${encodeURIComponent(utm_source)}`
+    + `&utm_medium=${encodeURIComponent(utm_medium)}`
+    + `&utm_campaign=${encodeURIComponent(utm_campaign)}`
+    + `&uid=${encodeURIComponent(uid())}`
+    + `&ua=${encodeURIComponent(navigator.userAgent)}`;
+
+  // fire-and-forget; no-cors avoids IG’s in-app oddities
+  fetch(logURL, {mode:'no-cors'}).catch(()=>{});
+  
 })();
 </script>
 </body>
