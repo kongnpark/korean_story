@@ -22,22 +22,24 @@
     font-family:ui-sans-serif,system-ui,-apple-system,Segoe UI,Roboto,Noto Sans,Arial
   }
   header{ text-align:center; padding:8px 10px 0 }
-  .title{ font-weight:700; font-size:22px; color:#0f172a; margin:0 0 2px }
-  .subtitle{ font-size:13px; color:#e5e7eb; margin:0 0 4px }
+  .title{ font-weight:800; font-size:28px; color:#0f172a; margin:0 0 4px }
+  .subtitle{ font-size:16px; color:#e5e7eb; margin:0 0 6px }
 
   :root{ --globe: min(39vmin, 320px); }
 
   .stage{
     width:100%; height:100%;
     display:grid; place-content:start center;
-    padding-top:4.2vh; padding-inline:12px; box-sizing:border-box;
+    padding-top:2.8vh; padding-inline:12px; box-sizing:border-box;
   }
 
   .globe-wrap{ display:flex; flex-direction:column; align-items:center; gap:10px; }
   .tap{
-    font:500 13px/1 ui-sans-serif; color:#e8eefc;
+    font:600 14px/1 ui-sans-serif; color:#e8eefc;
     text-shadow:0 1px 2px rgba(0,0,0,.25); opacity:.95;
   }
+
+  /* Globe + perfectly-matched round background */
   .globe{
     width:var(--globe); aspect-ratio:1/1; border-radius:50%;
     display:grid; place-items:center; position:relative; overflow:hidden;
@@ -46,6 +48,13 @@
     background: radial-gradient(120% 120% at 35% 30%, #f8fafc 0%, #eef2ff 45%, #e2e8f0 100%);
   }
   .globe:active{ transform:scale(.985) }
+  /* background circle exactly same size/position as globe */
+  .globe::before{
+    content:"";
+    position:absolute; inset:0; border-radius:50%;
+    background: radial-gradient(120% 120% at 65% 70%, rgba(255,255,255,.14) 0%, rgba(255,255,255,0) 55%);
+    pointer-events:none;
+  }
 
   /* word sphere */
   #word-sphere{ position:absolute; inset:0; border-radius:50%; overflow:hidden }
@@ -58,6 +67,8 @@
     will-change:transform, opacity, filter;
   }
   #word-sphere .ws-word.ws-accent{ color:#f59e0b; }
+
+  .today{ font:600 13px/1.2 ui-sans-serif; color:#eef2ff; opacity:.9 }
 
   /* RESULT: cover left, text+meta right */
   .fortune-card{
@@ -104,7 +115,7 @@
 
 <header>
   <h1 class="title">Korean of the day</h1>
-  <p class="subtitle">Tap the globe to reveal today’s line.</p>
+  <p class="subtitle">Tap the globe to reveal today’s line</p>
 </header>
 
 <main class="stage">
@@ -112,6 +123,7 @@
     <button id="globe" class="globe" aria-label="Tap to reveal today’s line">
       <div id="word-sphere"><div class="ws-space" id="ws-space"></div></div>
     </button>
+    <div id="today" class="today"></div>
 
     <!-- RESULT CARD -->
     <section id="fortuneCard" class="fortune-card" aria-live="polite" aria-label="오늘의 문장">
@@ -137,53 +149,79 @@
 
 <div id="again" class="again">Already revealed. Come back tomorrow ✨</div>
 
-<script defer>
+<script>
 (function(){
-  /* ---- your deployed Apps Script Web App URL ---- */
+  /* ---- GAS endpoint ---- */
   const GAS_ENDPOINT = 'https://script.google.com/macros/s/AKfycbxSDTnP3poBP8_I65rC8bbkIw2Acn50aGMXJd0ewGzpAZeds8gq-2DSqCgTPhy-rqlN/exec';
+  const VALID = /^https:\/\/script\.google\.com\/macros\/s\/[^/]+\/exec$/;
+  const hasGAS = VALID.test(GAS_ENDPOINT);
 
   /* ---- utils ---- */
   const params = new URLSearchParams(location.search);
   const SRC = params.get('utm_source') || 'web';
 
-  function todayKST() {
-    const k = new Date(new Date().toLocaleString('en-US', { timeZone: 'Asia/Seoul' }));
-    const y = k.getFullYear(), m = String(k.getMonth()+1).padStart(2,'0'), d = String(k.getDate()).padStart(2,'0');
+  function todayKST(){
+    const k = new Date(new Date().toLocaleString('en-US',{ timeZone:'Asia/Seoul'}));
+    const y=k.getFullYear(), m=String(k.getMonth()+1).padStart(2,'0'), d=String(k.getDate()).padStart(2,'0');
     return `${y}-${m}-${d}`;
   }
 
   const UID_KEY = 'fortune-uid';
   function getUid(){
-    let u = localStorage.getItem(UID_KEY);
-    if(!u){ u = (crypto.randomUUID?.() || `${Date.now()}-${Math.random()}`); localStorage.setItem(UID_KEY, u); }
-    return u;
+    try{
+      let u = localStorage.getItem(UID_KEY);
+      if(!u){ u = (crypto.randomUUID?.() || `${Date.now()}-${Math.random()}`); localStorage.setItem(UID_KEY,u); }
+      return u;
+    }catch{ return ''; }
+  }
+
+  // simple per-day cache
+  const CACHE_KEY = 'fortune-cache-v1';
+  function loadCache(ymd){
+    try{ return (JSON.parse(localStorage.getItem(CACHE_KEY)||'{}'))[ymd] || null; }catch{ return null; }
+  }
+  function saveCache(ymd, data){
+    try{
+      const all = JSON.parse(localStorage.getItem(CACHE_KEY)||'{}');
+      all[ymd] = data;
+      localStorage.setItem(CACHE_KEY, JSON.stringify(all));
+    }catch{}
   }
 
   /* ---- API helpers ---- */
   async function fetchQuote(ymd){
-    const url = `${GAS_ENDPOINT}?d=${encodeURIComponent(ymd)}`;
+    if(!hasGAS) return { error:true, text:'GAS endpoint missing.' };
+    const url = `${GAS_ENDPOINT}?m=quote&d=${encodeURIComponent(ymd)}`;
     const r = await fetch(url, { cache:'no-store', redirect:'follow' });
     const t = await r.text();
-    try {
+    try{
       const j = JSON.parse(t);
-      return j.ok === undefined ? { ok:true, ...j } : j; // accept both shapes
-    } catch (e) {
+      return j.ok === undefined ? { ok:true, ...j } : j;
+    }catch{
       console.error('fetchQuote not-json preview:', t.slice(0,200));
-      throw new Error('not-json');
+      return { error:true, text:'데이터 형식 오류' };
     }
   }
 
   function logEvent(kind, ymd, note=''){
+    if(!hasGAS) return;
     const uid = getUid();
     const ua  = navigator.userAgent;
-    fetch(`${GAS_ENDPOINT}?action=log&d=${encodeURIComponent(ymd)}&src=${encodeURIComponent(SRC)}&uid=${encodeURIComponent(uid)}&ua=${encodeURIComponent(ua)}&event=${encodeURIComponent(kind)}&note=${encodeURIComponent(note)}`)
-      .catch(()=>{});
+    const q = `${GAS_ENDPOINT}?m=log`
+      + `&event=${encodeURIComponent(kind)}`
+      + `&story_date=${encodeURIComponent(ymd)}`
+      + `&utm_source=${encodeURIComponent(SRC)}`
+      + `&utm_medium=${encodeURIComponent(params.get('utm_medium')||'story')}`
+      + `&utm_campaign=${encodeURIComponent(params.get('utm_campaign')||'korean_of_the_day')}`
+      + `&uid=${encodeURIComponent(uid)}`
+      + `&ua=${encodeURIComponent(ua)}`
+      + `&note=${encodeURIComponent(note)}`;
+    fetch(q,{mode:'no-cors'}).catch(()=>{});
   }
 
-  /* ---- DOM refs ---- */
+  /* ---- DOM ---- */
   const globe     = document.getElementById('globe');
   const again     = document.getElementById('again');
-
   const card      = document.getElementById('fortuneCard');
   const fcCover   = document.getElementById('fcCover');
   const fcText    = document.getElementById('fcText');
@@ -199,45 +237,26 @@
 
   function renderFortune(d){
     // cover
-    if (d.cover) {
-      fcCover.src = d.cover;
-      fcCover.style.display = '';
-    } else {
-      fcCover.removeAttribute('src');
-      fcCover.style.display = 'none';
-    }
+    if (d.cover) { fcCover.src = d.cover; fcCover.style.display = ''; }
+    else { fcCover.removeAttribute('src'); fcCover.style.display = 'none'; }
 
-    // text
-    fcText.textContent = d.text || '오늘 문장이 아직 없어요. 잠시 후 다시 시도해 주세요.';
-
-    // metadata
+    // text + meta
+    fcText.textContent   = d.text   || '오늘 문장이 아직 없어요. 잠시 후 다시 시도해 주세요.';
     fcBook.textContent   = d.book   || '';
     fcAuthor.textContent = d.author || '';
     fcIsbn.textContent   = d.isbn   || '';
 
     // links
     if (d.link) {
-      fcLink.href = d.link;
-      fcLink.style.display = 'inline-block';
-      fcOpen.href = d.link;
-      fcOpen.style.display = 'inline-block';
-
-      // tiny perf boost: preconnect to book host after we know it
-      try {
-        const a = new URL(d.link);
-        const l = document.createElement('link');
-        l.rel = 'preconnect'; l.href = `${a.protocol}//${a.host}`;
-        document.head.appendChild(l);
-      } catch {}
+      fcLink.href = d.link; fcLink.style.display = 'inline-block';
+      fcOpen.href = d.link; fcOpen.style.display = 'inline-block';
+      try{ const a=new URL(d.link); const l=document.createElement('link'); l.rel='preconnect'; l.href=`${a.protocol}//${a.host}`; document.head.appendChild(l); }catch{}
     } else {
-      fcLink.style.display = 'none';
-      fcOpen.style.display = 'none';
+      fcLink.style.display = 'none'; fcOpen.style.display = 'none';
     }
 
     // copy
-    const copyText = d.text
-      ? `${d.text}\n— ${[d.book, d.author].filter(Boolean).join(' • ')}${d.isbn ? ' • ISBN ' + d.isbn : ''}`.trim()
-      : '';
+    const copyText = d.text ? `${d.text}\n— ${[d.book,d.author].filter(Boolean).join(' • ')}${d.isbn?' • ISBN '+d.isbn:''}`.trim() : '';
     fcCopy.onclick = async () => {
       try { await navigator.clipboard.writeText(copyText); fcCopy.textContent='Copied!'; }
       catch { fcCopy.textContent='Copy failed'; }
@@ -248,16 +267,28 @@
     card.classList.add('show');
   }
 
-  /* ---------- Faster, smoother reveal ---------- */
-  // Prefetch so it's ready when the user taps
+  /* ---- prefetch + cache ---- */
   let fortunePromise = null;
-  function prefetch() {
-    if (!fortunePromise) fortunePromise = fetchQuote(ymd).catch(() => ({ error:true }));
+  function prefetch(){
+    if (!fortunePromise) {
+      fortunePromise = fetchQuote(ymd)
+        .then(d => { if (!d.error) saveCache(ymd,d); return d; })
+        .catch(() => ({ error:true }));
+    }
   }
+
+  // Instant render from cache (no ribbon yet)
+  const cached = loadCache(ymd);
+  if (cached) {
+    renderFortune(cached);
+    // don't show "Already revealed" until user actually taps
+  }
+  // warm network copy
   window.addEventListener('DOMContentLoaded', prefetch, { once:true });
   globe.addEventListener('pointerenter', prefetch, { once:true });
   globe.addEventListener('touchstart', prefetch, { once:true, passive:true });
 
+  /* ---- reveal flow ---- */
   function showLoading(){
     card.classList.add('show','is-loading');
     card.setAttribute('aria-busy','true');
@@ -270,22 +301,23 @@
     fcCopy.disabled = false;
   }
 
-  // Single reliable activation on tap/click
-  globe.addEventListener('pointerup', async () => {
+  async function reveal(){
     showLoading();
-
-    // use prefetch if ready; otherwise wait (with timeout)
     const withTimeout = (p, ms=6000) => Promise.race([
-      p, new Promise(res => setTimeout(() => res({ error:true, text:"네트워크 오류입니다. 잠시 후 다시 시도해 주세요." }), ms))
+      p, new Promise(res => setTimeout(()=>res({ error:true, text:"네트워크 오류입니다. 잠시 후 다시 시도해 주세요." }), ms))
     ]);
     const data = await withTimeout(fortunePromise || fetchQuote(ymd));
-
     hideLoading();
-    if (data && !data.error && (data.ok ?? true)) renderFortune(data);
-    else renderFortune({ text:"네트워크 오류입니다. 잠시 후 다시 시도해 주세요." });
 
-    setTimeout(()=> { again.style.display='block'; }, 80);
-  }, { once:true });
+    if (data && !data.error && (data.ok ?? true)) { renderFortune(data); saveCache(ymd,data); }
+    else { renderFortune(loadCache(ymd) || { text:"네트워크 오류입니다. 잠시 후 다시 시도해 주세요." }); }
+
+    again.style.display = 'block';
+    logEvent('reveal', ymd);
+  }
+
+  globe.addEventListener('pointerup', reveal);
+  globe.addEventListener('keydown', e => { if (e.key==='Enter' || e.key===' ') reveal(); });
 
   /* ===== word sphere (auto-rotate only) ===== */
   (function(){
@@ -295,7 +327,7 @@
       "여유","여행","자연","책","음악","예술","언어","문화","미래","오늘","미소","선물","빛","별","바람","바다","산",
       "길","시작","연결","협력","지식","호기심","격려","성찰","용서","성취","정직","따뜻함","지속","새로움"
     ];
-    const host  = document.getElementById('word-sphere');
+    const host = document.getElementById('word-sphere');
     const space = document.getElementById('ws-space');
 
     function fibonacciPoints(n){
@@ -328,14 +360,12 @@
 
     function render(){
       rx += AUTO.x; ry += AUTO.y;
-
       const sx=Math.sin(rx), cx=Math.cos(rx);
       const sy=Math.sin(ry), cy=Math.cos(ry);
       const R = radius();
 
       for(let i=0;i<points.length;i++){
         let [x,y,z] = points[i];
-
         let y1 = y*cx - z*sx;
         let z1 = y*sx + z*cx;
         let x2 =  x*cy + z1*sy;
@@ -356,7 +386,5 @@
     render();
     new ResizeObserver(()=>{}).observe(host);
   })();
-
-
-</body>
-</html>
+})();
+</script>
